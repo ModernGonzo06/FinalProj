@@ -4,15 +4,29 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import gonzo.modern.finalproj.data.UserManager
 import gonzo.modern.finalproj.model.ClassWithStudents
 import gonzo.modern.finalproj.ui.composables.AttendanceSheet
 import gonzo.modern.finalproj.ui.composables.ClassList
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    username: String,
+    userManager: UserManager
+) {
     var selectedClass by remember { mutableStateOf<ClassWithStudents?>(null) }
     var classes by remember { mutableStateOf(listOf<ClassWithStudents>()) }
+    
+    // Load classes when screen is first composed
+    LaunchedEffect(Unit) {
+        classes = userManager.getClassesForUser(username)
+    }
+
+    // Save classes whenever they change
+    LaunchedEffect(classes) {
+        userManager.saveClassesForUser(username, classes)
+    }
     
     Scaffold(
         topBar = {
