@@ -35,6 +35,9 @@ fun AttendanceSheet(
     var showDatePicker by remember { mutableStateOf(false) }
     var showDateDropdown by remember { mutableStateOf(false) }
     var showAttendanceHistory by remember { mutableStateOf(false) }
+    var showAddStudent by remember { mutableStateOf(false) }
+    var showStudentInfo by remember { mutableStateOf<Student?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     
     // Find attendance record for selected date
     val currentAttendanceRecord = classWithStudents.attendanceRecords.find { 
@@ -94,6 +97,73 @@ fun AttendanceSheet(
     fun removeAttendanceRecord(date: LocalDate) {
         val updatedRecords = classWithStudents.attendanceRecords.filter { it.date != date }
         onClassUpdated(classWithStudents.copy(attendanceRecords = updatedRecords))
+    }
+
+    // Add this dialog outside the Scaffold
+    showStudentInfo?.let { student ->
+        AlertDialog(
+            onDismissRequest = { showStudentInfo = null },
+            title = { Text("Student Information") },
+            text = {
+                Column {
+                    Text("Name: ${student.name}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("Email: ${student.email}")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("ID: ${student.id}")
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation = true
+                    }
+                ) {
+                    Text("Remove Student", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStudentInfo = null }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    // Add delete confirmation dialog
+    if (showDeleteConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            title = { Text("Confirm Removal") },
+            text = { Text("Are you sure you want to remove this student?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showStudentInfo?.let { student ->
+                            val updatedStudents = classWithStudents.students.filter { it.id != student.id }
+                            val updatedRecords = classWithStudents.attendanceRecords.map { record ->
+                                record.copy(
+                                    attendance = record.attendance.filterKeys { it != student.id }
+                                )
+                            }
+                            onClassUpdated(classWithStudents.copy(
+                                students = updatedStudents,
+                                attendanceRecords = updatedRecords
+                            ))
+                        }
+                        showDeleteConfirmation = false
+                        showStudentInfo = null
+                    }
+                ) {
+                    Text("Remove")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -264,62 +334,102 @@ fun AttendanceSheet(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // Name field
-                    TextField(
-                        value = newStudentName,
-                        onValueChange = { newStudentName = it },
-                        label = { Text("New Student Name") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Email field with error state
-                    TextField(
-                        value = newStudentEmail,
-                        onValueChange = { 
-                            newStudentEmail = it
-                            showEmailError = false // Reset error when typing
-                        },
-                        label = { Text("Student Email") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        isError = showEmailError,
-                        supportingText = {
-                            if (showEmailError) {
-                                Text(
-                                    text = "Email must end with @tufts.edu",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    )
-                    
-                    Spacer(modifier = Modifier.height(8.dp))
-                    
-                    // Add button
-                    Button(
-                        onClick = {
-                            if (newStudentName.isNotBlank() && newStudentEmail.isNotBlank()) {
-                                if (newStudentEmail.endsWith("@tufts.edu")) {
-                                    val updatedClass = classWithStudents.copy(
-                                        students = classWithStudents.students + Student(
-                                            name = newStudentName,
-                                            email = newStudentEmail
-                                        )
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            if (!showAddStudent) {
+                                Button(
+                                    onClick = { showAddStudent = true },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("Add Student")
+                                }
+                            } else {
+                                Column {
+                                    // Name field
+                                    TextField(
+                                        value = newStudentName,
+                                        onValueChange = { newStudentName = it },
+                                        label = { Text("New Student Name") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true
                                     )
-                                    onClassUpdated(updatedClass)
-                                    newStudentName = ""
-                                    newStudentEmail = ""
-                                    showEmailError = false
-                                } else {
-                                    showEmailError = true
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Email field with error state
+                                    TextField(
+                                        value = newStudentEmail,
+                                        onValueChange = { 
+                                            newStudentEmail = it
+                                            showEmailError = false
+                                        },
+                                        label = { Text("Student Email") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        singleLine = true,
+                                        isError = showEmailError,
+                                        supportingText = {
+                                            if (showEmailError) {
+                                                Text(
+                                                    text = "Email must end with @tufts.edu",
+                                                    color = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        }
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        TextButton(
+                                            onClick = { 
+                                                showAddStudent = false
+                                                newStudentName = ""
+                                                newStudentEmail = ""
+                                                showEmailError = false
+                                            }
+                                        ) {
+                                            Text("Cancel")
+                                        }
+                                        
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        
+                                        Button(
+                                            onClick = {
+                                                if (newStudentName.isNotBlank() && newStudentEmail.isNotBlank()) {
+                                                    if (newStudentEmail.endsWith("@tufts.edu")) {
+                                                        val updatedClass = classWithStudents.copy(
+                                                            students = classWithStudents.students + Student(
+                                                                name = newStudentName,
+                                                                email = newStudentEmail
+                                                            )
+                                                        )
+                                                        onClassUpdated(updatedClass)
+                                                        newStudentName = ""
+                                                        newStudentEmail = ""
+                                                        showEmailError = false
+                                                        showAddStudent = false  // Hide the form after adding
+                                                    } else {
+                                                        showEmailError = true
+                                                    }
+                                                }
+                                            }
+                                        ) {
+                                            Text("Add")
+                                        }
+                                    }
                                 }
                             }
-                        },
-                        modifier = Modifier.align(Alignment.End)
-                    ) {
-                        Text("Add Student")
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -350,28 +460,11 @@ fun AttendanceSheet(
                                                 text = student.name,
                                                 style = MaterialTheme.typography.bodyLarge
                                             )
-                                            Text(
-                                                text = student.email,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
                                         }
                                         IconButton(
-                                            onClick = {
-                                                val updatedStudents = classWithStudents.students.filter { it.id != student.id }
-                                                // Update all attendance records to remove the student
-                                                val updatedRecords = classWithStudents.attendanceRecords.map { record ->
-                                                    record.copy(
-                                                        attendance = record.attendance.filterKeys { it != student.id }
-                                                    )
-                                                }
-                                                onClassUpdated(classWithStudents.copy(
-                                                    students = updatedStudents,
-                                                    attendanceRecords = updatedRecords
-                                                ))
-                                            }
+                                            onClick = { showStudentInfo = student }
                                         ) {
-                                            Text("✕")
+                                            Text("ℹ️")
                                         }
                                     }
                                     Row(
