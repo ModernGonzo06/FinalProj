@@ -33,6 +33,7 @@ fun AttendanceSheet(
     var showEmailError by remember { mutableStateOf(false) }
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
+    var showDateDropdown by remember { mutableStateOf(false) }
     
     // Find attendance record for selected date
     val currentAttendanceRecord = classWithStudents.attendanceRecords.find { 
@@ -124,6 +125,84 @@ fun AttendanceSheet(
                     selectedDate = selectedDate.plusDays(1)
                 }) {
                     Text("→")
+                }
+            }
+        }
+
+        // After the date selector Card and before the attendance percentage Card
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Attendance Records",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    IconButton(onClick = { showDateDropdown = !showDateDropdown }) {
+                        Text(if (showDateDropdown) "▼" else "▶")
+                    }
+                }
+                
+                if (showDateDropdown && classWithStudents.attendanceRecords.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 200.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(
+                            classWithStudents.attendanceRecords
+                                .sortedByDescending { it.date }
+                        ) { record ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { 
+                                        selectedDate = record.date
+                                        showDateDropdown = false
+                                    }
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = record.date.format(
+                                        DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")
+                                    ),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                val recordPercentage = if (classWithStudents.students.isNotEmpty()) {
+                                    (record.attendance.count { it.value }.toFloat() / 
+                                        classWithStudents.students.size * 100).toInt()
+                                } else 0
+                                Text(
+                                    text = "$recordPercentage%",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = PresentGreen
+                                )
+                            }
+                        }
+                    }
+                } else if (showDateDropdown) {
+                    Text(
+                        text = "No attendance records yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
                 }
             }
         }
