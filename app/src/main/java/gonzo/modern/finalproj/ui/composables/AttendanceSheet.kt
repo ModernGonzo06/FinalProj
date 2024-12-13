@@ -77,7 +77,14 @@ fun AttendanceSheet(
                 }
             }
         ) {
-            DatePicker(state = datePickerState)
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    todayContentColor = PresentGreen,
+                    todayDateBorderColor = PresentGreen,
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary
+                )
+            )
         }
     }
 
