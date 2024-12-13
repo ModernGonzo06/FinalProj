@@ -8,28 +8,168 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import gonzo.modern.finalproj.model.AttendanceRecord
 import gonzo.modern.finalproj.model.ClassWithStudents
 import gonzo.modern.finalproj.model.Student
 import gonzo.modern.finalproj.ui.theme.PresentGreen
 import gonzo.modern.finalproj.ui.theme.PresentGreenContainer
 import gonzo.modern.finalproj.ui.theme.OnPresentGreen
 import gonzo.modern.finalproj.ui.theme.OnPresentGreenContainer
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.Instant
+import java.time.ZoneId
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceSheet(
     classWithStudents: ClassWithStudents,
-    onClassUpdated: (ClassWithStudents) -> Unit
+    onClassUpdated: (ClassWithStudents) -> Unit,
+    onSaveAndExit: () -> Unit
 ) {
     var newStudentName by remember { mutableStateOf("") }
     var newStudentEmail by remember { mutableStateOf("") }
     var showEmailError by remember { mutableStateOf(false) }
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var showDatePicker by remember { mutableStateOf(false) }
     
+    // Find attendance record for selected date
+    val currentAttendanceRecord = classWithStudents.attendanceRecords.find { 
+        it.date == selectedDate 
+    } ?: AttendanceRecord(selectedDate)
+
+    // Calculate attendance percentage for current date
+    val attendancePercentage = if (classWithStudents.students.isNotEmpty()) {
+        val presentCount = currentAttendanceRecord.attendance.count { it.value }
+        (presentCount.toFloat() / classWithStudents.students.size) * 100
+    } else {
+        0f
+    }
+
+    // Date Picker Dialog
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli()
+        )
+        
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        selectedDate = Instant.ofEpochMilli(millis)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                            .plusDays(1)
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Date selector
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { showDatePicker = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { 
+                    selectedDate = selectedDate.minusDays(1)
+                }) {
+                    Text("←")
+                }
+                
+                Text(
+                    text = selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMM dd, yyyy")),
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                IconButton(onClick = { 
+                    selectedDate = selectedDate.plusDays(1)
+                }) {
+                    Text("→")
+                }
+            }
+        }
+
+        // Add attendance percentage indicator
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Today's Attendance",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                
+                Box(
+                    modifier = Modifier.size(60.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.fillMaxSize(),
+                        progress = { attendancePercentage / 100 },
+                        color = PresentGreen,
+                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                    Text(
+                        text = "${attendancePercentage.toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
+        // Save button
+        Button(
+            onClick = onSaveAndExit,
+            modifier = Modifier.align(Alignment.End)
+        ) {
+            Text("Save")
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         // Name field
         TextField(
             value = newStudentName,
@@ -91,7 +231,7 @@ fun AttendanceSheet(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Update the student card to show email
+        // Attendance list
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -126,10 +266,15 @@ fun AttendanceSheet(
                             IconButton(
                                 onClick = {
                                     val updatedStudents = classWithStudents.students.filter { it.id != student.id }
-                                    val updatedAttendance = classWithStudents.attendance.filterKeys { it != student.id }
+                                    // Update all attendance records to remove the student
+                                    val updatedRecords = classWithStudents.attendanceRecords.map { record ->
+                                        record.copy(
+                                            attendance = record.attendance.filterKeys { it != student.id }
+                                        )
+                                    }
                                     onClassUpdated(classWithStudents.copy(
                                         students = updatedStudents,
-                                        attendance = updatedAttendance
+                                        attendanceRecords = updatedRecords
                                     ))
                                 }
                             ) {
@@ -143,21 +288,29 @@ fun AttendanceSheet(
                         ) {
                             Button(
                                 onClick = {
-                                    val updatedAttendance = classWithStudents.attendance + 
+                                    val updatedAttendance = currentAttendanceRecord.attendance + 
                                         (student.id to true)
+                                    val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
+                                    val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
+                                    if (recordIndex >= 0) {
+                                        updatedRecords[recordIndex] = currentAttendanceRecord.copy(
+                                            attendance = updatedAttendance
+                                        )
+                                    } else {
+                                        updatedRecords.add(AttendanceRecord(
+                                            date = selectedDate,
+                                            attendance = updatedAttendance
+                                        ))
+                                    }
                                     onClassUpdated(classWithStudents.copy(
-                                        attendance = updatedAttendance
+                                        attendanceRecords = updatedRecords
                                     ))
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (classWithStudents.attendance[student.id] == true)
+                                    containerColor = if (currentAttendanceRecord.attendance[student.id] == true)
                                         PresentGreen
                                     else
-                                        PresentGreenContainer,
-                                    contentColor = if (classWithStudents.attendance[student.id] == true)
-                                        OnPresentGreen
-                                    else
-                                        OnPresentGreenContainer
+                                        PresentGreenContainer
                                 )
                             ) {
                                 Text("Present")
@@ -165,18 +318,30 @@ fun AttendanceSheet(
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = {
-                                    val updatedAttendance = classWithStudents.attendance + 
+                                    val updatedAttendance = currentAttendanceRecord.attendance + 
                                         (student.id to false)
+                                    val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
+                                    val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
+                                    if (recordIndex >= 0) {
+                                        updatedRecords[recordIndex] = currentAttendanceRecord.copy(
+                                            attendance = updatedAttendance
+                                        )
+                                    } else {
+                                        updatedRecords.add(AttendanceRecord(
+                                            date = selectedDate,
+                                            attendance = updatedAttendance
+                                        ))
+                                    }
                                     onClassUpdated(classWithStudents.copy(
-                                        attendance = updatedAttendance
+                                        attendanceRecords = updatedRecords
                                     ))
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = if (classWithStudents.attendance[student.id] == false)
+                                    containerColor = if (currentAttendanceRecord.attendance[student.id] == false)
                                         MaterialTheme.colorScheme.error
                                     else
                                         MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = if (classWithStudents.attendance[student.id] == false)
+                                    contentColor = if (currentAttendanceRecord.attendance[student.id] == false)
                                         MaterialTheme.colorScheme.onError
                                     else
                                         MaterialTheme.colorScheme.onErrorContainer

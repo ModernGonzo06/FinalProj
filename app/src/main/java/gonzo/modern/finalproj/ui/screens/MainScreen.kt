@@ -44,7 +44,8 @@ fun MainScreen() {
                         classes = classes.map { 
                             if (it.className == updated.className) updated else it 
                         }
-                    }
+                    },
+                    onSaveAndExit = { selectedClass = null }
                 )
             }
         }
