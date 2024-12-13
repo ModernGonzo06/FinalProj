@@ -12,6 +12,6 @@ val Pink40 = Color(0xFF7D5260)
 
 // Add custom colors for Present button
 val PresentGreen = Color(0xFF4CAF50)  // Bright green when selected
-val PresentGreenContainer = Color(0xFFB8E6B9)  // Light green when unselected
+val PresentGreenContainer = Color(0xFF1B5E20)  // Darker green when unselected
 val OnPresentGreen = Color.White  // Text color on selected
-val OnPresentGreenContainer = Color(0xFF1B5E20)  // Text color on unselected
+val OnPresentGreenContainer = Color(0xFF98FB98)  // Light green text on unselected

@@ -9,6 +9,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import gonzo.modern.finalproj.model.ClassWithStudents
+import gonzo.modern.finalproj.ui.theme.PresentGreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -18,6 +19,18 @@ fun ClassList(
     onClassSelected: (ClassWithStudents) -> Unit
 ) {
     var newClassName by remember { mutableStateOf("") }
+
+    // Helper function to calculate overall attendance percentage
+    fun calculateOverallAttendance(classWithStudents: ClassWithStudents): Float {
+        if (classWithStudents.students.isEmpty() || classWithStudents.attendanceRecords.isEmpty()) {
+            return 0f
+        }
+        val totalPossibleAttendances = classWithStudents.students.size * classWithStudents.attendanceRecords.size
+        val totalPresent = classWithStudents.attendanceRecords.sumOf { record ->
+            record.attendance.count { it.value }
+        }
+        return (totalPresent.toFloat() / totalPossibleAttendances) * 100
+    }
 
     Column(
         modifier = Modifier
@@ -64,7 +77,7 @@ fun ClassList(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Column {
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = classItem.className,
                                 style = MaterialTheme.typography.titleMedium
@@ -74,6 +87,27 @@ fun ClassList(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
+                        
+                        // Add attendance percentage indicator
+                        Box(
+                            modifier = Modifier.size(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val attendancePercentage = calculateOverallAttendance(classItem)
+                            CircularProgressIndicator(
+                                modifier = Modifier.fillMaxSize(),
+                                progress = { attendancePercentage / 100 },
+                                color = PresentGreen,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Text(
+                                text = "${attendancePercentage.toInt()}%",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
                         IconButton(
                             onClick = {
                                 onClassesUpdated(classes.filter { it.className != classItem.className })
