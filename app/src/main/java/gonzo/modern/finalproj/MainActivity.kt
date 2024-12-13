@@ -4,6 +4,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.*
+import gonzo.modern.finalproj.ui.screens.LoginScreen
 import gonzo.modern.finalproj.ui.screens.MainScreen
 import gonzo.modern.finalproj.ui.theme.FinalProjTheme
 
@@ -13,7 +15,13 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             FinalProjTheme {
-                MainScreen()
+                var isLoggedIn by remember { mutableStateOf(false) }
+
+                if (!isLoggedIn) {
+                    LoginScreen(onLoginSuccess = { isLoggedIn = true })
+                } else {
+                    MainScreen()
+                }
             }
         }
     }
