@@ -20,6 +20,9 @@ import java.time.format.DateTimeFormatter
 import java.time.Instant
 import java.time.ZoneId
 import androidx.compose.foundation.clickable
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.DropdownMenuItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -192,13 +195,13 @@ fun AttendanceSheet(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
         ) {
-            // Date selector and attendance percentage card
+            // Top section with date selector and attendance history
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 16.dp)
+                    .padding(vertical = 8.dp)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp)
@@ -333,209 +336,248 @@ fun AttendanceSheet(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Name field
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            if (!showAddStudent) {
-                                Button(
-                                    onClick = { showAddStudent = true },
-                                    modifier = Modifier.align(Alignment.End)
-                                ) {
-                                    Text("Add Student")
+                    // Add Student section
+                    if (showAddStudent) {
+                        Column {
+                            TextField(
+                                value = newStudentName,
+                                onValueChange = { newStudentName = it },
+                                label = { Text("New Student Name") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            TextField(
+                                value = newStudentEmail,
+                                onValueChange = { 
+                                    newStudentEmail = it
+                                    showEmailError = false
+                                },
+                                label = { Text("Student Email") },
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true,
+                                isError = showEmailError,
+                                supportingText = {
+                                    if (showEmailError) {
+                                        Text(
+                                            text = "Email must end with @tufts.edu",
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                    }
                                 }
-                            } else {
-                                Column {
-                                    // Name field
-                                    TextField(
-                                        value = newStudentName,
-                                        onValueChange = { newStudentName = it },
-                                        label = { Text("New Student Name") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    // Email field with error state
-                                    TextField(
-                                        value = newStudentEmail,
-                                        onValueChange = { 
-                                            newStudentEmail = it
-                                            showEmailError = false
-                                        },
-                                        label = { Text("Student Email") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        singleLine = true,
-                                        isError = showEmailError,
-                                        supportingText = {
-                                            if (showEmailError) {
-                                                Text(
-                                                    text = "Email must end with @tufts.edu",
-                                                    color = MaterialTheme.colorScheme.error
+                            )
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                TextButton(onClick = { 
+                                    showAddStudent = false
+                                    newStudentName = ""
+                                    newStudentEmail = ""
+                                    showEmailError = false
+                                }) {
+                                    Text("Cancel")
+                                }
+                                
+                                Button(onClick = {
+                                    if (newStudentName.isNotBlank() && newStudentEmail.isNotBlank()) {
+                                        if (newStudentEmail.endsWith("@tufts.edu")) {
+                                            val updatedClass = classWithStudents.copy(
+                                                students = classWithStudents.students + Student(
+                                                    name = newStudentName,
+                                                    email = newStudentEmail
                                                 )
-                                            }
-                                        }
-                                    )
-                                    
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        TextButton(
-                                            onClick = { 
-                                                showAddStudent = false
-                                                newStudentName = ""
-                                                newStudentEmail = ""
-                                                showEmailError = false
-                                            }
-                                        ) {
-                                            Text("Cancel")
-                                        }
-                                        
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        
-                                        Button(
-                                            onClick = {
-                                                if (newStudentName.isNotBlank() && newStudentEmail.isNotBlank()) {
-                                                    if (newStudentEmail.endsWith("@tufts.edu")) {
-                                                        val updatedClass = classWithStudents.copy(
-                                                            students = classWithStudents.students + Student(
-                                                                name = newStudentName,
-                                                                email = newStudentEmail
-                                                            )
-                                                        )
-                                                        onClassUpdated(updatedClass)
-                                                        newStudentName = ""
-                                                        newStudentEmail = ""
-                                                        showEmailError = false
-                                                        showAddStudent = false  // Hide the form after adding
-                                                    } else {
-                                                        showEmailError = true
-                                                    }
-                                                }
-                                            }
-                                        ) {
-                                            Text("Add")
+                                            )
+                                            onClassUpdated(updatedClass)
+                                            newStudentName = ""
+                                            newStudentEmail = ""
+                                            showEmailError = false
+                                            showAddStudent = false
+                                        } else {
+                                            showEmailError = true
                                         }
                                     }
+                                }) {
+                                    Text("Add")
                                 }
                             }
                         }
+                    } else {
+                        Button(
+                            onClick = { showAddStudent = true },
+                            modifier = Modifier.align(Alignment.End)
+                        ) {
+                            Text("Add Student")
+                        }
                     }
+                }
+            }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+            // Before the LazyColumn, add a button to mark all present
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Button(
+                    onClick = {
+                        val allPresentAttendance = classWithStudents.students.associate { 
+                            it.id to true 
+                        }
+                        val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
+                        val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
+                        
+                        if (recordIndex >= 0) {
+                            updatedRecords[recordIndex] = currentAttendanceRecord.copy(
+                                attendance = allPresentAttendance
+                            )
+                        } else {
+                            updatedRecords.add(AttendanceRecord(
+                                date = selectedDate,
+                                attendance = allPresentAttendance
+                            ))
+                        }
+                        
+                        onClassUpdated(classWithStudents.copy(
+                            attendanceRecords = updatedRecords
+                        ))
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PresentGreen
+                    )
+                ) {
+                    Text("Mark All Present")
+                }
+            }
 
-                    // Attendance list
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+            // Before the LazyColumn, after the Mark All Present button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Students",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "${classWithStudents.students.size} total",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Student list in a scrollable container
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(classWithStudents.students) { student ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        items(classWithStudents.students) { student ->
-                            Card(
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                        ) {
+                            Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                                )
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(12.dp)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = student.name,
+                                        style = MaterialTheme.typography.bodyLarge
+                                    )
+                                }
+                                IconButton(
+                                    onClick = { showStudentInfo = student }
                                 ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                text = student.name,
-                                                style = MaterialTheme.typography.bodyLarge
+                                    Text("ℹ️")
+                                }
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Button(
+                                    onClick = {
+                                        val updatedAttendance = currentAttendanceRecord.attendance + 
+                                            (student.id to true)
+                                        val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
+                                        val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
+                                        if (recordIndex >= 0) {
+                                            updatedRecords[recordIndex] = currentAttendanceRecord.copy(
+                                                attendance = updatedAttendance
                                             )
+                                        } else {
+                                            updatedRecords.add(AttendanceRecord(
+                                                date = selectedDate,
+                                                attendance = updatedAttendance
+                                            ))
                                         }
-                                        IconButton(
-                                            onClick = { showStudentInfo = student }
-                                        ) {
-                                            Text("ℹ️")
-                                        }
-                                    }
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Button(
-                                            onClick = {
-                                                val updatedAttendance = currentAttendanceRecord.attendance + 
-                                                    (student.id to true)
-                                                val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
-                                                val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
-                                                if (recordIndex >= 0) {
-                                                    updatedRecords[recordIndex] = currentAttendanceRecord.copy(
-                                                        attendance = updatedAttendance
-                                                    )
-                                                } else {
-                                                    updatedRecords.add(AttendanceRecord(
-                                                        date = selectedDate,
-                                                        attendance = updatedAttendance
-                                                    ))
-                                                }
-                                                onClassUpdated(classWithStudents.copy(
-                                                    attendanceRecords = updatedRecords
-                                                ))
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (currentAttendanceRecord.attendance[student.id] == true)
-                                                    PresentGreen
-                                                else
-                                                    PresentGreenContainer
+                                        onClassUpdated(classWithStudents.copy(
+                                            attendanceRecords = updatedRecords
+                                        ))
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (currentAttendanceRecord.attendance[student.id] == true)
+                                            PresentGreen
+                                        else
+                                            PresentGreenContainer
+                                    )
+                                ) {
+                                    Text("Present")
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    onClick = {
+                                        val updatedAttendance = currentAttendanceRecord.attendance + 
+                                            (student.id to false)
+                                        val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
+                                        val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
+                                        if (recordIndex >= 0) {
+                                            updatedRecords[recordIndex] = currentAttendanceRecord.copy(
+                                                attendance = updatedAttendance
                                             )
-                                        ) {
-                                            Text("Present")
+                                        } else {
+                                            updatedRecords.add(AttendanceRecord(
+                                                date = selectedDate,
+                                                attendance = updatedAttendance
+                                            ))
                                         }
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Button(
-                                            onClick = {
-                                                val updatedAttendance = currentAttendanceRecord.attendance + 
-                                                    (student.id to false)
-                                                val updatedRecords = classWithStudents.attendanceRecords.toMutableList()
-                                                val recordIndex = updatedRecords.indexOfFirst { it.date == selectedDate }
-                                                if (recordIndex >= 0) {
-                                                    updatedRecords[recordIndex] = currentAttendanceRecord.copy(
-                                                        attendance = updatedAttendance
-                                                    )
-                                                } else {
-                                                    updatedRecords.add(AttendanceRecord(
-                                                        date = selectedDate,
-                                                        attendance = updatedAttendance
-                                                    ))
-                                                }
-                                                onClassUpdated(classWithStudents.copy(
-                                                    attendanceRecords = updatedRecords
-                                                ))
-                                            },
-                                            colors = ButtonDefaults.buttonColors(
-                                                containerColor = if (currentAttendanceRecord.attendance[student.id] == false)
-                                                    MaterialTheme.colorScheme.error
-                                                else
-                                                    MaterialTheme.colorScheme.errorContainer,
-                                                contentColor = if (currentAttendanceRecord.attendance[student.id] == false)
-                                                    MaterialTheme.colorScheme.onError
-                                                else
-                                                    MaterialTheme.colorScheme.onErrorContainer
-                                            )
-                                        ) {
-                                            Text("Absent")
-                                        }
-                                    }
+                                        onClassUpdated(classWithStudents.copy(
+                                            attendanceRecords = updatedRecords
+                                        ))
+                                    },
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = if (currentAttendanceRecord.attendance[student.id] == false)
+                                            MaterialTheme.colorScheme.error
+                                        else
+                                            MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = if (currentAttendanceRecord.attendance[student.id] == false)
+                                            MaterialTheme.colorScheme.onError
+                                        else
+                                            MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                ) {
+                                    Text("Absent")
                                 }
                             }
                         }
