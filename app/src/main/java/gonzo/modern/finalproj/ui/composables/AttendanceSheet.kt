@@ -12,6 +12,7 @@ import gonzo.modern.finalproj.model.AttendanceRecord
 import gonzo.modern.finalproj.model.ClassWithStudents
 import gonzo.modern.finalproj.model.Student
 import gonzo.modern.finalproj.ui.theme.PresentGreen
+import gonzo.modern.finalproj.ui.theme.LateOrange
 import gonzo.modern.finalproj.ui.theme.PresentGreenContainer
 import gonzo.modern.finalproj.ui.theme.OnPresentGreen
 import gonzo.modern.finalproj.ui.theme.OnPresentGreenContainer
@@ -33,7 +34,7 @@ import androidx.compose.material.icons.filled.Info
 fun getAttendanceColor(percentage: Float): Color {
     return when {
         percentage >= 90f -> PresentGreen
-        percentage >= 70f -> Color(0xFFFFA726) // Orange
+        percentage >= 70f -> LateOrange
         else -> MaterialTheme.colorScheme.error
     }
 }
@@ -149,7 +150,7 @@ fun AttendanceSheet(
                         color = getAttendanceColor(attendancePercentage)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     // Show individual attendance records
                     classWithStudents.attendanceRecords
                         .sortedByDescending { it.date }

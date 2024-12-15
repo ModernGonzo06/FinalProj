@@ -15,3 +15,4 @@ val PresentGreen = Color(0xFF4CAF50)  // Bright green when selected
 val PresentGreenContainer = Color(0xFF1B5E20)  // Darker green when unselected
 val OnPresentGreen = Color.White  // Text color on selected
 val OnPresentGreenContainer = Color(0xFF98FB98)  // Light green text on unselected
+val LateOrange = Color(0xFFFFA726)  // Orange for late status
