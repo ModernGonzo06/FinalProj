@@ -23,6 +23,20 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
+
+// Move the function outside of AttendanceSheet
+@Composable
+fun getAttendanceColor(percentage: Float): Color {
+    return when {
+        percentage >= 90f -> PresentGreen
+        percentage >= 70f -> Color(0xFFFFA726) // Orange
+        else -> MaterialTheme.colorScheme.error
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,6 +55,7 @@ fun AttendanceSheet(
     var showAddStudent by remember { mutableStateOf(false) }
     var showStudentInfo by remember { mutableStateOf<Student?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     
     // Find attendance record for selected date
     val currentAttendanceRecord = classWithStudents.attendanceRecords.find { 
@@ -110,10 +125,49 @@ fun AttendanceSheet(
             text = {
                 Column {
                     Text("Name: ${student.name}")
-                    Spacer(modifier = Modifier.height(8.dp))
                     Text("Email: ${student.email}")
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    // Add attendance history section
+                    Text(
+                        "Attendance History",
+                        style = MaterialTheme.typography.titleMedium
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("ID: ${student.id}")
+                    
+                    // Calculate overall attendance percentage
+                    val totalDays = classWithStudents.attendanceRecords.size
+                    val daysPresent = classWithStudents.attendanceRecords.count { 
+                        it.attendance[student.id] == true 
+                    }
+                    val attendancePercentage = if (totalDays > 0) {
+                        (daysPresent.toFloat() / totalDays) * 100
+                    } else 0f
+                    
+                    Text(
+                        "Overall Attendance: ${attendancePercentage.toInt()}%",
+                        color = getAttendanceColor(attendancePercentage)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Show individual attendance records
+                    classWithStudents.attendanceRecords
+                        .sortedByDescending { it.date }
+                        .forEach { record ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(record.date.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                                Text(
+                                    if (record.attendance[student.id] == true) "Present" else "Absent",
+                                    color = if (record.attendance[student.id] == true) 
+                                        PresentGreen else MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                 }
             },
             confirmButton = {
@@ -262,6 +316,7 @@ fun AttendanceSheet(
                                     Text(
                                         text = "${percentage.toInt()}%",
                                         style = MaterialTheme.typography.bodyMedium,
+                                        color = getAttendanceColor(percentage),
                                         modifier = Modifier.padding(horizontal = 8.dp)
                                     )
                                     
@@ -290,8 +345,14 @@ fun AttendanceSheet(
                             text = "Date: ${selectedDate.format(DateTimeFormatter.ISO_LOCAL_DATE)}",
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        TextButton(onClick = { showDatePicker = true }) {
-                            Text("Change Date")
+                        IconButton(
+                            onClick = { showDatePicker = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = "Change Date",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
 
@@ -323,12 +384,13 @@ fun AttendanceSheet(
                                 CircularProgressIndicator(
                                     modifier = Modifier.fillMaxSize(),
                                     progress = { attendancePercentage / 100 },
-                                    color = PresentGreen,
+                                    color = getAttendanceColor(attendancePercentage),
                                     trackColor = MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 Text(
                                     text = "${attendancePercentage.toInt()}%",
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = getAttendanceColor(attendancePercentage)
                                 )
                             }
                         }
@@ -421,8 +483,22 @@ fun AttendanceSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                // Add search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Search students...") },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+                
                 Button(
                     onClick = {
                         val allPresentAttendance = classWithStudents.students.associate { 
@@ -482,7 +558,11 @@ fun AttendanceSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
-                items(classWithStudents.students) { student ->
+                items(
+                    classWithStudents.students.filter { student ->
+                        student.name.contains(searchQuery, ignoreCase = true)
+                    }
+                ) { student ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -508,7 +588,11 @@ fun AttendanceSheet(
                                 IconButton(
                                     onClick = { showStudentInfo = student }
                                 ) {
-                                    Text("ℹ️")
+                                    Icon(
+                                        imageVector = Icons.Default.Info,
+                                        contentDescription = "Student Information",
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
                                 }
                             }
                             Row(
