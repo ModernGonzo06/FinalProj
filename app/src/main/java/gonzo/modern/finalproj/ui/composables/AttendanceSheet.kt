@@ -16,8 +16,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Email
@@ -95,6 +98,7 @@ fun AttendanceSheet(
     var showStudentInfo by remember { mutableStateOf<Student?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
+    var studentToDelete by remember { mutableStateOf<Student?>(null) }
     
     // Find attendance record for selected date
     val currentAttendanceRecord = classWithStudents.attendanceRecords.find { 
@@ -158,38 +162,88 @@ fun AttendanceSheet(
 
     // Add this dialog outside the Scaffold
     showStudentInfo?.let { student ->
+        // Calculate student's attendance percentage
+        val totalDays = classWithStudents.attendanceRecords.size
+        val presentDays = classWithStudents.attendanceRecords.count { record ->
+            record.attendance[student.id] == true
+        }
+        val attendancePercentage = if (totalDays > 0) {
+            (presentDays.toFloat() / totalDays) * 100
+        } else 0f
+
         AlertDialog(
             onDismissRequest = { showStudentInfo = null },
-            title = { Text("Student Information") },
-            text = {
+            modifier = Modifier
+                .widthIn(max = 400.dp)  // Limit maximum width
+                .heightIn(max = 600.dp), // Limit maximum height
+            title = { 
                 Column {
-                    Text("Name: ${student.name}")
-                    Text("Email: ${student.email}")
+                    Text(
+                        text = "Student Information",
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                    Text(
+                        text = student.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 8.dp)
+                ) {
+                    // Email
+                    Text(
+                        text = student.email,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
                     Spacer(modifier = Modifier.height(16.dp))
                     
-                    // Add attendance history section
+                    // Overall Attendance
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Overall Attendance",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Box(
+                            modifier = Modifier.size(48.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(
+                                progress = { attendancePercentage / 100 },
+                                modifier = Modifier.fillMaxSize(),
+                                color = getAttendanceColor(attendancePercentage),
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                            Text(
+                                text = "${attendancePercentage.toInt()}%",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Attendance History
                     Text(
-                        "Attendance History",
+                        text = "Attendance History",
                         style = MaterialTheme.typography.titleMedium
                     )
+                    
                     Spacer(modifier = Modifier.height(8.dp))
                     
-                    // Calculate overall attendance percentage
-                    val totalDays = classWithStudents.attendanceRecords.size
-                    val daysPresent = classWithStudents.attendanceRecords.count { 
-                        it.attendance[student.id] == true 
-                    }
-                    val attendancePercentage = if (totalDays > 0) {
-                        (daysPresent.toFloat() / totalDays) * 100
-                    } else 0f
-                    
-                    Text(
-                        "Overall Attendance: ${attendancePercentage.toInt()}%",
-                        color = getAttendanceColor(attendancePercentage)
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Show individual attendance records
+                    // Show attendance records sorted by date
                     classWithStudents.attendanceRecords
                         .sortedByDescending { it.date }
                         .forEach { record ->
@@ -199,28 +253,40 @@ fun AttendanceSheet(
                                     .padding(vertical = 4.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(record.date.format(DateTimeFormatter.ISO_LOCAL_DATE))
                                 Text(
-                                    if (record.attendance[student.id] == true) "Present" else "Absent",
-                                    color = if (record.attendance[student.id] == true) 
-                                        PresentGreen else MaterialTheme.colorScheme.error
+                                    text = record.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Text(
+                                    text = when(record.attendance[student.id]) {
+                                        true -> "Present"
+                                        false -> "Absent"
+                                        null -> "N/A"
+                                    },
+                                    color = when(record.attendance[student.id]) {
+                                        true -> PresentGreen
+                                        false -> MaterialTheme.colorScheme.error
+                                        null -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    }
                                 )
                             }
                         }
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteConfirmation = true
+                Row {
+                    TextButton(
+                        onClick = {
+                            studentToDelete = student
+                            showDeleteConfirmation = true
+                            showStudentInfo = null
+                        }
+                    ) {
+                        Text("Remove Student", color = MaterialTheme.colorScheme.error)
                     }
-                ) {
-                    Text("Remove Student", color = MaterialTheme.colorScheme.error)
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showStudentInfo = null }) {
-                    Text("Close")
+                    TextButton(onClick = { showStudentInfo = null }) {
+                        Text("Close")
+                    }
                 }
             }
         )
@@ -229,33 +295,45 @@ fun AttendanceSheet(
     // Add delete confirmation dialog
     if (showDeleteConfirmation) {
         AlertDialog(
-            onDismissRequest = { showDeleteConfirmation = false },
+            onDismissRequest = { 
+                showDeleteConfirmation = false 
+                studentToDelete = null
+            },
             title = { Text("Confirm Removal") },
             text = { Text("Are you sure you want to remove this student?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showStudentInfo?.let { student ->
+                        studentToDelete?.let { student ->
+                            // Remove student from the list
                             val updatedStudents = classWithStudents.students.filter { it.id != student.id }
+                            
+                            // Remove student's attendance records
                             val updatedRecords = classWithStudents.attendanceRecords.map { record ->
-                                record.copy(
-                                    attendance = record.attendance.filterKeys { it != student.id }
-                                )
+                                val updatedAttendance = record.attendance.filterKeys { it != student.id }
+                                record.copy(attendance = updatedAttendance)
                             }
+                            
+                            // Update the class
                             onClassUpdated(classWithStudents.copy(
                                 students = updatedStudents,
                                 attendanceRecords = updatedRecords
                             ))
                         }
                         showDeleteConfirmation = false
-                        showStudentInfo = null
+                        studentToDelete = null
                     }
                 ) {
-                    Text("Remove")
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) {
+                TextButton(
+                    onClick = { 
+                        showDeleteConfirmation = false
+                        studentToDelete = null
+                    }
+                ) {
                     Text("Cancel")
                 }
             }
