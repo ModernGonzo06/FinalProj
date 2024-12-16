@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import gonzo.modern.finalproj.data.UserManager
 import gonzo.modern.finalproj.model.ClassWithStudents
 import gonzo.modern.finalproj.ui.composables.AttendanceSheet
@@ -13,55 +14,32 @@ import gonzo.modern.finalproj.ui.composables.ClassList
 @Composable
 fun MainScreen(
     username: String,
-    userManager: UserManager
+    userManager: UserManager,
+    onLogout: () -> Unit
 ) {
+    val context = LocalContext.current
+    
     var selectedClass by remember { mutableStateOf<ClassWithStudents?>(null) }
-    var classes by remember { mutableStateOf(listOf<ClassWithStudents>()) }
+    var classes by remember { mutableStateOf(userManager.getClassesForUser(username)) }
     
-    // Load classes when screen is first composed
-    LaunchedEffect(Unit) {
-        classes = userManager.getClassesForUser(username)
-    }
-
-    // Save classes whenever they change
-    LaunchedEffect(classes) {
-        userManager.saveClassesForUser(username, classes)
-    }
-    
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(selectedClass?.className ?: "Attendance") },
-                navigationIcon = {
-                    if (selectedClass != null) {
-                        IconButton(onClick = { selectedClass = null }) {
-                            Text("←")
-                        }
-                    }
+    if (selectedClass == null) {
+        ClassList(
+            classes = classes,
+            onClassesUpdated = { classes = it },
+            onClassSelected = { selectedClass = it }
+        )
+    } else {
+        AttendanceSheet(
+            context = context,
+            classWithStudents = selectedClass!!,
+            onClassUpdated = { updated ->
+                selectedClass = updated
+                classes = classes.map { 
+                    if (it.className == updated.className) updated else it 
                 }
-            )
-        },
-        modifier = Modifier.fillMaxSize()
-    ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding)) {
-            if (selectedClass == null) {
-                ClassList(
-                    classes = classes,
-                    onClassesUpdated = { classes = it },
-                    onClassSelected = { selectedClass = it }
-                )
-            } else {
-                AttendanceSheet(
-                    classWithStudents = selectedClass!!,
-                    onClassUpdated = { updated -> 
-                        selectedClass = updated
-                        classes = classes.map { 
-                            if (it.className == updated.className) updated else it 
-                        }
-                    },
-                    onSaveAndExit = { selectedClass = null }
-                )
-            }
-        }
+                userManager.saveClassesForUser(username, classes)
+            },
+            onSaveAndExit = { selectedClass = null }
+        )
     }
 } 

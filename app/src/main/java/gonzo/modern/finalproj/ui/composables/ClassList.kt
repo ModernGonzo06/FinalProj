@@ -18,6 +18,7 @@ fun ClassList(
     onClassesUpdated: (List<ClassWithStudents>) -> Unit,
     onClassSelected: (ClassWithStudents) -> Unit
 ) {
+    var showAddClass by remember { mutableStateOf(false) }
     var newClassName by remember { mutableStateOf("") }
 
     // Helper function to calculate overall attendance percentage
@@ -37,6 +38,14 @@ fun ClassList(
             .fillMaxSize()
             .padding(16.dp)
     ) {
+        // Add the title at the top
+        Text(
+            text = "Classes",
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 16.dp)
+        )
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically

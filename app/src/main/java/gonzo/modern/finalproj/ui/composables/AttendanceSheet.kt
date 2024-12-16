@@ -1,5 +1,6 @@
 package gonzo.modern.finalproj.ui.composables
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,6 +29,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
+import android.content.Intent
+import androidx.compose.material.icons.filled.Email
+import androidx.core.content.FileProvider
+import androidx.compose.ui.platform.LocalContext
+import gonzo.modern.finalproj.util.AttendanceExporter
 
 // Move the function outside of AttendanceSheet
 @Composable
@@ -42,6 +48,7 @@ fun getAttendanceColor(percentage: Float): Color {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AttendanceSheet(
+    context: Context,
     classWithStudents: ClassWithStudents,
     onClassUpdated: (ClassWithStudents) -> Unit,
     onSaveAndExit: () -> Unit
@@ -231,14 +238,46 @@ fun AttendanceSheet(
                 tonalElevation = 3.dp,
                 shadowElevation = 3.dp
             ) {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp)
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Export button on the left
+                    IconButton(
+                        onClick = {
+                            try {
+                                val file = AttendanceExporter.exportToCSV(context, classWithStudents)
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.provider",
+                                    file
+                                )
+                                
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/csv"
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                
+                                context.startActivity(Intent.createChooser(intent, "Share Attendance Records"))
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = "Export Attendance Records",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Save button on the right
                     Button(
-                        onClick = onSaveAndExit,
-                        modifier = Modifier.align(Alignment.CenterEnd)
+                        onClick = onSaveAndExit
                     ) {
                         Text("Save")
                     }
@@ -252,6 +291,14 @@ fun AttendanceSheet(
                 .padding(paddingValues)
                 .padding(horizontal = 16.dp)
         ) {
+            // Add course title at the top
+            Text(
+                text = classWithStudents.className,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
             // Top section with date selector and attendance history
             Card(
                 modifier = Modifier
@@ -327,8 +374,8 @@ fun AttendanceSheet(
                                         Text("✕")
                                     }
                                 }
-                                if (record.date != classWithStudents.attendanceRecords.sortedByDescending { it.date }.last().date) {
-                                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                if (record.date != classWithStudents.attendanceRecords.minByOrNull { it.date }!!.date) {
+                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                                 }
                             }
                         }
