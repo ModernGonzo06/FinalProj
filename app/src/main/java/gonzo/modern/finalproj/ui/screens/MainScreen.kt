@@ -26,7 +26,8 @@ fun MainScreen(
         ClassList(
             classes = classes,
             onClassesUpdated = { classes = it },
-            onClassSelected = { selectedClass = it }
+            onClassSelected = { selectedClass = it },
+            onLogout = onLogout
         )
     } else {
         AttendanceSheet(
