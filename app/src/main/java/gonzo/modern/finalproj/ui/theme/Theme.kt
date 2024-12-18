@@ -6,9 +6,10 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsControllerCompat
+
 
 private val DarkColorScheme = darkColorScheme(
     primary = PresentGreen,
@@ -36,8 +37,17 @@ fun FinalProjTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            
+            // Enable edge-to-edge experience
+            WindowCompat.setDecorFitsSystemWindows(window, false)
+            
+            // Update the system bars to be transparent
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            insetsController.apply {
+                isAppearanceLightStatusBars = false
+                isAppearanceLightNavigationBars = false
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
         }
     }
 
