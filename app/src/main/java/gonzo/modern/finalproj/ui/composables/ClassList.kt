@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import gonzo.modern.finalproj.model.ClassWithStudents
 import gonzo.modern.finalproj.ui.theme.PresentGreen
@@ -86,15 +87,24 @@ fun ClassList(
             ) {
                 TextField(
                     value = newClassName,
-                    onValueChange = { newClassName = it },
+                    onValueChange = { input ->
+                        // Limit the length of class name (adjust 30 to desired max length)
+                        if (input.length <= 50) {
+                            newClassName = input
+                        }
+                    },
                     label = { Text("New Class Name") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,  // Force single line
+                    maxLines = 1        // Ensure text doesn't wrap
                 )
+                
                 Spacer(modifier = Modifier.width(8.dp))
+                
                 Button(
                     onClick = {
                         if (newClassName.isNotBlank()) {
-                            onClassesUpdated(classes + ClassWithStudents(className = newClassName))
+                            onClassesUpdated(classes + ClassWithStudents(className = newClassName.trim()))
                             newClassName = ""
                         }
                     }
@@ -123,7 +133,9 @@ fun ClassList(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = classItem.className,
-                                    style = MaterialTheme.typography.titleMedium
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 1,           // Ensure single line
+                                    overflow = TextOverflow.Ellipsis  // Add ellipsis if text is too long
                                 )
                                 Text(
                                     text = "${classItem.students.size} students",
